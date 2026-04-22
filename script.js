@@ -96,7 +96,7 @@ function buildGallery(dates, stats) {
 
 function generateFileList(date, name, count) {
     console.log(`Generating file list for date: ${date}, name: ${name}, count: ${count}`);
-    if (name == '') {
+    if (name != '') {
         // For folders: compilation, comic, and all frames
         const basePath = `${date}/${name}`;
         let files = [
