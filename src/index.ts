@@ -4,7 +4,7 @@ export interface Env {
 
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
-  return origin === 'https://gartic-highlights-gallery.pages.dev' || origin.endsWith('.netliz.net');
+  return origin === 'https://gartic-highlights-gallery.pages.dev' || origin.endsWith('netliz.net');
 }
 
 let cachedManifest: {dates: Array<{date: string, subfolders: string[]}>} | null = null;
@@ -34,8 +34,6 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = request.headers.get('origin');
 
-    const origin = request.headers.get('origin');
-
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
@@ -59,7 +57,6 @@ export default {
       }), {
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
           'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
         },
       });
