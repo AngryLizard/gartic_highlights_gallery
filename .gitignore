@@ -13,6 +13,9 @@ yarn-error.log*
 dist/
 build/
 
+# Images
+images/
+
 # Logs
 logs
 *.log

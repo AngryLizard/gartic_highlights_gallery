@@ -1,30 +1,124 @@
 export interface Env {
-  // Add environment variables here if needed
+  DB: D1Database;
+}
+
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return origin === 'https://gartic-highlights-gallery.pages.dev' || origin.endsWith('.netliz.net');
+}
+
+let cachedManifest: {dates: Array<{date: string, subfolders: string[]}>} | null = null;
+
+async function getManifest(env: Env): Promise<{dates: Array<{date: string, subfolders: string[]}>}> {
+  if (cachedManifest) return cachedManifest;
+  try {
+    const response = await fetch(new URL('/manifest.json', 'https://gartic-highlights-gallery.pages.dev/'));
+    cachedManifest = await response.json();
+    return cachedManifest;
+  } catch (error) {
+    console.error('Failed to fetch manifest:', error);
+    return {dates: []};
+  }
+}
+
+async function getStats(env: Env): Promise<Record<string, {favorite: number, bad: number}>> {
+  const result = await env.DB.prepare('SELECT * FROM votes').all();
+  const stats: Record<string, {favorite: number, bad: number}> = {};
+  for (const row of result.results as Array<{image_id: string, fav_count: number, bad_count: number}>) {
+    stats[row.image_id] = {favorite: row.fav_count, bad: row.bad_count};
+  }
+  return stats;
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const origin = request.headers.get('origin');
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': 'https://gartic-highlights-gallery.pages.dev',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
         },
       });
     }
 
-    if (request.method === 'GET') {
-      const randomNumber = Math.floor(Math.random() * 100) + 1;
-      return new Response(JSON.stringify({ number: randomNumber }), {
+    const url = new URL(request.url);
+
+    if (request.method === 'GET' && url.pathname === '/list') {
+      const manifest = await getManifest(env);
+      const stats = await getStats(env);
+      return new Response(JSON.stringify({
+        dates: manifest.dates,
+        stats
+      }), {
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'https://gartic-highlights-gallery.pages.dev',
+          'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
         },
       });
     }
-    return new Response('Method not allowed', { status: 405 });
+
+    if (request.method === 'POST' && url.pathname === '/mark') {
+      const body = await request.json() as {path: string, action: 'favorite' | 'bad', add: boolean};
+      const image_id = body.path;
+      const action = body.action;
+      const add = body.add !== false; // Default to true if not specified
+
+      try {
+        // Check if entry exists
+        const existing = await env.DB.prepare('SELECT * FROM votes WHERE image_id = ?').bind(image_id).first();
+        
+        if (add) {
+          // Adding a vote
+          if (!existing) {
+            // Create entry if it doesn't exist
+            if (action === 'favorite') {
+              await env.DB.prepare('INSERT INTO votes(image_id, fav_count, bad_count) VALUES(?, 1, 0)').bind(image_id).run();
+            } else {
+              await env.DB.prepare('INSERT INTO votes(image_id, fav_count, bad_count) VALUES(?, 0, 1)').bind(image_id).run();
+            }
+          } else {
+            // Increment the appropriate count
+            if (action === 'favorite') {
+              await env.DB.prepare('UPDATE votes SET fav_count = fav_count + 1 WHERE image_id = ?').bind(image_id).run();
+            } else {
+              await env.DB.prepare('UPDATE votes SET bad_count = bad_count + 1 WHERE image_id = ?').bind(image_id).run();
+            }
+          }
+        } else {
+          // Removing a vote
+          if (existing) {
+            // Decrement the appropriate count (never go below 0)
+            if (action === 'favorite') {
+              await env.DB.prepare('UPDATE votes SET fav_count = MAX(0, fav_count - 1) WHERE image_id = ?').bind(image_id).run();
+            } else {
+              await env.DB.prepare('UPDATE votes SET bad_count = MAX(0, bad_count - 1) WHERE image_id = ?').bind(image_id).run();
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({success: true}), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
+          },
+        });
+      } catch (error) {
+        console.error('Error marking image:', error);
+        return new Response(JSON.stringify({error: 'Failed to mark image'}), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
+          },
+        });
+      }
+    }
+
+    return new Response('Not found', { status: 404 });
   },
 };
