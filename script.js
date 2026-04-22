@@ -35,40 +35,85 @@ function buildGallery(dates, stats) {
     const section = document.createElement('div');
     section.className = 'date-section';
     section.innerHTML = `<h2>${dateObj.date}</h2>`;
-    const grid = document.createElement('div');
-    grid.className = 'image-grid';
     
-    dateObj.items.forEach(item => {
-      const files = generateFileList(dateObj.date, item.name, item.count);
-      files.forEach(file => {
-        const imagePath = file;
-        createImageElement(grid, imagePath, dateObj.date, item.name, item.count);
+    // Separate folders and files
+    const folders = dateObj.items.filter(item => item.is_folder);
+    const files = dateObj.items.filter(item => !item.is_folder);
+    
+    // Add folder subsection
+    if (folders.length > 0) {
+      const folderSubsection = document.createElement('div');
+      folderSubsection.className = 'category-subsection';
+      
+      const folderHeader = document.createElement('h3');
+      folderHeader.textContent = 'GIF Collections';
+      folderSubsection.appendChild(folderHeader);
+      
+      const folderGrid = document.createElement('div');
+      folderGrid.className = 'image-grid';
+      
+      folders.forEach(item => {
+        const files = generateFileList(dateObj.date, item.name, item.count);
+        files.forEach(file => {
+          createImageElement(folderGrid, file, dateObj.date, item.name, item.count);
+        });
       });
-    });
+      
+      folderSubsection.appendChild(folderGrid);
+      section.appendChild(folderSubsection);
+    }
     
-    section.appendChild(grid);
+    // Add files subsection
+    if (files.length > 0) {
+      const fileSubsection = document.createElement('div');
+      fileSubsection.className = 'category-subsection';
+      
+      const fileHeader = document.createElement('h3');
+      fileHeader.textContent = 'Individual Images';
+      fileSubsection.appendChild(fileHeader);
+      
+      const fileGrid = document.createElement('div');
+      fileGrid.className = 'image-grid';
+      
+      files.forEach(item => {
+        // For individual files: generate list of all numbered images
+        const imageFiles = [];
+        for (let i = 1; i <= item.count; i++) {
+          imageFiles.push(`${dateObj.date}/${i}.webp`);
+        }
+        imageFiles.forEach(file => {
+          createImageElement(fileGrid, file, dateObj.date, '', item.count);
+        });
+      });
+      
+      fileSubsection.appendChild(fileGrid);
+      section.appendChild(fileSubsection);
+    }
+    
     gallery.appendChild(section);
   });
 }
 
 function generateFileList(date, name, count) {
-  const basePath = `${date}/${name}`;
-  if (name=='') {
-    // For folders: compilation, comic, and all frames
-    const files = [
-      `${basePath}/compilation.webp`,
-      `${basePath}/comic.webp`
-    ];
-    for (let i = 1; i <= count; i++) {
-      files.push(`${basePath}/frame${i}.webp`);
+    console.log(`Generating file list for date: ${date}, name: ${name}, count: ${count}`);
+    if (name == '') {
+        // For folders: compilation, comic, and all frames
+        const basePath = `${date}/${name}`;
+        let files = [
+            `${basePath}/compilation.webp`,
+            `${basePath}/comic.webp`
+        ];
+        for (let i = 1; i <= count; i++) {
+            files.push(`${basePath}/frame${i}.webp`);
+        }
+        return files;
+    } else {
+        let files = [];
+        for (let i = 1; i <= count; i++) {
+            files.push(`${date}/${i}.webp`);
+        }
+        return files;
     }
-    return files;
-  } else {
-    for (let i = 1; i <= count; i++) {
-        // For single files
-        return [`${date}/${i}.webp`];
-    }
-  }
 }
 
 function createImageElement(container, imagePath, date, name, frameCount) {
