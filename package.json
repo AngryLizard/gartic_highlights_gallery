@@ -1,0 +1,13 @@
+{
+  "name": "gartic-highlights-gallery",
+  "version": "1.0.0",
+  "description": "Simple test website with Cloudflare Pages and Workers",
+  "devDependencies": {
+    "wrangler": "^3.57.1",
+    "@cloudflare/workers-types": "^4.20240405.0",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy"
+  }
+}

@@ -1,0 +1,5 @@
+name = "gartic-highlights-gallery"
+main = "src/index.ts"
+compatibility_date = "2024-04-22"
+
+# Wrangler will automatically compile TypeScript
