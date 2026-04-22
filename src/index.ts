@@ -22,12 +22,21 @@ async function getManifest(env: Env): Promise<{dates: Array<{date: string, subfo
 }
 
 async function getStats(env: Env): Promise<Record<string, {favorite: number, bad: number}>> {
-  const result = await env.DB.prepare('SELECT * FROM votes').all();
-  const stats: Record<string, {favorite: number, bad: number}> = {};
-  for (const row of result.results as Array<{image_id: string, fav_count: number, bad_count: number}>) {
-    stats[row.image_id] = {favorite: row.fav_count, bad: row.bad_count};
+  if (!env.DB) {
+    console.error('D1 database not bound. Check wrangler.toml configuration.');
+    return {};
   }
-  return stats;
+  try {
+    const result = await env.DB.prepare('SELECT * FROM votes').all();
+    const stats: Record<string, {favorite: number, bad: number}> = {};
+    for (const row of result.results as Array<{image_id: string, fav_count: number, bad_count: number}>) {
+      stats[row.image_id] = {favorite: row.fav_count, bad: row.bad_count};
+    }
+    return stats;
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    return {};
+  }
 }
 
 export default {
@@ -63,6 +72,16 @@ export default {
     }
 
     if (request.method === 'POST' && url.pathname === '/mark') {
+      if (!env.DB) {
+        return new Response(JSON.stringify({error: 'Database not configured'}), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
+          },
+        });
+      }
+
       const body = await request.json() as {path: string, action: 'favorite' | 'bad', add: boolean};
       const image_id = body.path;
       const action = body.action;
