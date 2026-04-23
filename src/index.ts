@@ -60,9 +60,25 @@ export default {
     if (request.method === 'GET' && url.pathname === '/list') {
       const manifest = await getManifest(env);
       const stats = await getStats(env);
+      
+      // Merge stats into manifest items using item identifiers
+      const datesWithStats = manifest.dates.map((dateObj: any) => ({
+        ...dateObj,
+        items: dateObj.items.map((item: any) => {
+          // Item identifier: {date}/{itemName} where itemName is empty string for individual files
+          const itemId = item.name !== '' ? `${dateObj.date}/${item.name}` : `${dateObj.date}/`;
+          const voteData = stats[itemId] || {favorite: 0, bad: 0};
+          
+          return {
+            ...item,
+            fav_count: voteData.favorite || 0,
+            bad_count: voteData.bad || 0
+          };
+        })
+      }));
+      
       return new Response(JSON.stringify({
-        dates: manifest.dates,
-        stats
+        dates: datesWithStats
       }), {
         headers: {
           'Content-Type': 'application/json',

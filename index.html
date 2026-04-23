@@ -38,6 +38,21 @@
     .controls input {
       padding: 5px;
       font-size: 16px;
+      max-width: 60px;
+    }
+    
+    .controls button {
+      padding: 5px 15px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .controls button:hover {
+      background-color: #0056b3;
     }
     
     .date-section {
@@ -75,11 +90,6 @@
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-    }
-    
-    .image-item:hover {
-      transform: scale(1.05);
     }
     
     .image-item img {
@@ -91,29 +101,42 @@
     
     .buttons {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      bottom: 5px;
+      right: 5px;
       display: flex;
-      gap: 5px;
-      padding: 5px;
-      background: rgba(0,0,0,0.5);
-      justify-content: space-between;
+      gap: 8px;
+      padding: 0;
+      background: transparent;
+      justify-content: flex-end;
     }
     
-    .buttons button {
-      flex: 1;
-      padding: 5px;
+    .icon-button {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      padding: 4px 6px;
       border: none;
       border-radius: 4px;
-      background-color: rgba(255,255,255,0.9);
+      background-color: rgba(0,0,0,0.6);
       cursor: pointer;
-      font-size: 12px;
+      font-size: 11px;
+      color: white;
       transition: background-color 0.2s;
     }
     
-    .buttons button:hover {
-      background-color: white;
+    .icon-button:hover {
+      background-color: rgba(0,0,0,0.8);
+    }
+    
+    .icon-button svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+    
+    .icon-button.active {
+      background-color: rgba(255,215,0,0.7);
+      color: #333;
     }
     
     .fullscreen-modal {
@@ -135,7 +158,8 @@
   
   <div class="controls">
     <label for="columns">Columns:</label>
-    <input type="number" id="columns" min="1" max="10" value="4">
+    <input type="number" id="columns" min="1" max="8" value="4">
+    <button id="refresh-btn">Refresh Gallery</button>
   </div>
   
   <div id="gallery">

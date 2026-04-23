@@ -4,7 +4,11 @@ const bucketUrl = 'https://pub-d4b8e6479ecd4cfd8ca22220375fc499.r2.dev';
 let stats = {};
 let userVotes = {}; // Track user's personal votes: {imagePath: 'favorite' | 'bad' | null}
 
-
+// SVG Icons
+const starEmptySVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+const starFilledSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></svg>`;
+const blockEmptySVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+const blockFilledSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" fill="currentColor"/></svg>`;
 
 // Load user votes from localStorage
 function loadUserVotes() {
@@ -17,18 +21,46 @@ function saveUserVotes() {
   localStorage.setItem('userVotes', JSON.stringify(userVotes));
 }
 
+// Load columns from localStorage
+function loadColumns() {
+  const saved = localStorage.getItem('galleryColumns');
+  if (saved) {
+    const columnsInput = document.getElementById('columns');
+    columnsInput.value = saved;
+    document.documentElement.style.setProperty('--columns', saved);
+  }
+}
+
+// Save columns to localStorage
+function saveColumns() {
+  const columnsInput = document.getElementById('columns');
+  localStorage.setItem('galleryColumns', columnsInput.value);
+  document.documentElement.style.setProperty('--columns', columnsInput.value);
+}
+
 async function fetchList() {
   try {
     const response = await fetch(`${workerUrl}list`);
     const data = await response.json();
-    buildGallery(data.dates, data.stats);
-    stats = data.stats;
+    
+    // Build stats map from manifest items directly
+    const statsMap = {};
+    data.dates.forEach((dateObj) => {
+      dateObj.items.forEach((item) => {
+        // Item identifier: {date}/{itemName} where itemName is empty string for individual files
+        const itemId = item.name !== '' ? `${dateObj.date}/${item.name}` : `${dateObj.date}/`;
+        statsMap[itemId] = {favorite: item.fav_count || 0, bad: item.bad_count || 0};
+      });
+    });
+    
+    stats = statsMap;
+    buildGallery(data.dates);
   } catch (error) {
     console.error('Error fetching list:', error);
   }
 }
 
-function buildGallery(dates, stats) {
+function buildGallery(dates) {
   const gallery = document.getElementById('gallery');
   gallery.innerHTML = '';
   dates.forEach(dateObj => {
@@ -45,7 +77,8 @@ function buildGallery(dates, stats) {
         folderSubsection.className = 'category-subsection';
         
         const folderHeader = document.createElement('h3');
-        folderHeader.textContent = item.name === '' ? 'Individual Images' : item.name;
+        let folderTitle = item.name === '' ? 'Individual Images' : item.name
+        folderHeader.textContent = `${dateObj.date} - ${folderTitle} (${item.count} objects)`;
         folderSubsection.appendChild(folderHeader);
         
         const folderGrid = document.createElement('div');
@@ -101,63 +134,46 @@ function createImageElement(container, imagePath, date, name, frameCount) {
   
   const buttons = document.createElement('div');
   buttons.className = 'buttons';
-  buttons.style.position = 'absolute';
-  buttons.style.bottom = '0';
-  buttons.style.left = '0';
-  buttons.style.right = '0';
-  buttons.style.display = 'flex';
-  buttons.style.gap = '5px';
-  buttons.style.padding = '5px';
-  buttons.style.background = 'rgba(0,0,0,0.5)';
-  buttons.style.justifyContent = 'space-between';
   
   const favBtn = document.createElement('button');
-  const badBtn = document.createElement('button');
-  favBtn.style.flex = '1';
-  badBtn.style.flex = '1';
-  favBtn.style.padding = '5px';
-  badBtn.style.padding = '5px';
+  favBtn.className = 'icon-button';
   
-  // Update button text with vote counts
-  function updateButtonTexts() {
-    const voteData = stats[imagePath] || {favorite: 0, bad: 0};
-    const userVote = userVotes[imagePath];
+  const badBtn = document.createElement('button');
+  badBtn.className = 'icon-button';
+  
+  // Calculate item identifier: {date}/{itemName} where itemName is empty string for individual files
+  const itemId = name !== '' ? `${date}/${name}` : `${date}/`;
+  
+  // Update button display
+  function updateButtonDisplay() {
+    const voteData = stats[itemId] || {favorite: 0, bad: 0};
+    const userVote = userVotes[itemId];
     
-    favBtn.textContent = `❤ ${voteData.favorite}`;
-    badBtn.textContent = `👎 ${voteData.bad}`;
+    // Update favorite button
+    favBtn.innerHTML = (userVote === 'favorite' ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
+    favBtn.classList.toggle('active', userVote === 'favorite');
     
-    if (userVote === 'favorite') {
-      favBtn.style.fontWeight = 'bold';
-      favBtn.style.opacity = '1';
-    } else {
-      favBtn.style.fontWeight = 'normal';
-      favBtn.style.opacity = '0.7';
-    }
-    
-    if (userVote === 'bad') {
-      badBtn.style.fontWeight = 'bold';
-      badBtn.style.opacity = '1';
-    } else {
-      badBtn.style.fontWeight = 'normal';
-      badBtn.style.opacity = '0.7';
-    }
+    // Update bad button
+    badBtn.innerHTML = (userVote === 'bad' ? blockFilledSVG : blockEmptySVG) + `<span>${voteData.bad}</span>`;
+    badBtn.classList.toggle('active', userVote === 'bad');
   }
   
-  updateButtonTexts();
+  updateButtonDisplay();
   
   favBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(imagePath, 'favorite', updateButtonTexts);
+    markImage(itemId, 'favorite', updateButtonDisplay);
   };
+  
   badBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(imagePath, 'bad', updateButtonTexts);
+    markImage(itemId, 'bad', updateButtonDisplay);
   };
   
   buttons.appendChild(favBtn);
   buttons.appendChild(badBtn);
   
-  img.onclick = () => showModal(img.src);
+  img.onclick = () => showModal(img.src, date, name);
   
   imgDiv.appendChild(img);
   imgDiv.appendChild(buttons);
@@ -224,7 +240,7 @@ async function markImage(path, action, callback) {
   }
 }
 
-function showModal(src) {
+function showModal(src, date, name) {
   const modal = document.createElement('div');
   modal.className = 'fullscreen-modal';
   modal.style.position = 'fixed';
@@ -252,27 +268,40 @@ function showModal(src) {
   const buttons = document.createElement('div');
   buttons.style.position = 'absolute';
   buttons.style.bottom = '10px';
-  buttons.style.left = '50%';
-  buttons.style.transform = 'translateX(-50%)';
+  buttons.style.right = '10px';
   buttons.style.display = 'flex';
-  buttons.style.gap = '10px';
+  buttons.style.gap = '8px';
   
   const favBtn = document.createElement('button');
+  favBtn.className = 'icon-button';
+  
   const badBtn = document.createElement('button');
-  favBtn.textContent = '❤ Favorite';
-  badBtn.textContent = '👎 Mark Bad';
-  favBtn.style.padding = '10px 20px';
-  badBtn.style.padding = '10px 20px';
-  favBtn.style.cursor = 'pointer';
-  badBtn.style.cursor = 'pointer';
+  badBtn.className = 'icon-button';
+  
+  // Calculate item identifier using date and name
+  const itemId = name !== '' ? `${date}/${name}` : `${date}/`;
+  
+  // Update button display
+  function updateModalButtons() {
+    const voteData = stats[itemId] || {favorite: 0, bad: 0};
+    const userVote = userVotes[itemId];
+    
+    favBtn.innerHTML = (userVote === 'favorite' ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
+    favBtn.classList.toggle('active', userVote === 'favorite');
+    
+    badBtn.innerHTML = (userVote === 'bad' ? blockFilledSVG : blockEmptySVG) + `<span>${voteData.bad}</span>`;
+    badBtn.classList.toggle('active', userVote === 'bad');
+  }
+  
+  updateModalButtons();
   
   favBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(src.replace('images/', '').replace(/\.webp$/, ''), 'favorite', () => {});
+    markImage(itemId, 'favorite', updateModalButtons);
   };
   badBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(src.replace('images/', '').replace(/\.webp$/, ''), 'bad', () => {});
+    markImage(itemId, 'bad', updateModalButtons);
   };
   
   buttons.appendChild(favBtn);
@@ -293,9 +322,19 @@ function showModal(src) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadUserVotes();
+  loadColumns();
   fetchList();
+  
+  // Refresh button listener
+  const refreshBtn = document.getElementById('refresh-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', fetchList);
+  }
+  
+  // Columns input listener - only update display, don't fetch
   const columnsInput = document.getElementById('columns');
   if (columnsInput) {
+    columnsInput.addEventListener('change', saveColumns);
     columnsInput.addEventListener('input', () => {
       document.documentElement.style.setProperty('--columns', columnsInput.value);
     });
