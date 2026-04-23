@@ -65,17 +65,23 @@ export default {
       const datesWithStats = manifest.dates.map((dateObj: any) => ({
         ...dateObj,
         items: dateObj.items.map((item: any) => {
-          // Item identifier: {date}/{itemName} where itemName is empty string for individual files
-          const itemId = item.name !== '' ? `${dateObj.date}/${item.name}` : `${dateObj.date}/`;
-          const voteData = stats[itemId] || {favorite: 0, bad: 0};
-          
-          return {
-            ...item,
-            fav_count: voteData.favorite || 0,
-            bad_count: voteData.bad || 0
-          };
-        })
-      }));
+            let subkeys = [];
+            if (item.name !== '') {
+                subkeys = ['compilation', 'comic'];
+                subkeys.push(...Array.from({ length: item.count }, (_, i) => `frame${(i + 1)}`));
+            } else {
+              subkeys = Array.from({ length: item.count }, (_, i) => `${(i + 1)}`);
+            }
+            const imageData = subkeys.map(key => {
+                const voteData = stats[`${dateObj.date}/${item.name}/${key}`] || {favorite: 0, bad: 0};
+                return {key: key, fav: voteData.favorite || 0, bad: voteData.bad || 0};
+            });
+            return {
+                name: item.name,
+                images: imageData
+            };
+            })
+        }));
       
       return new Response(JSON.stringify({
         dates: datesWithStats

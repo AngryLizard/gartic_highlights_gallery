@@ -38,6 +38,10 @@ function saveColumns() {
   document.documentElement.style.setProperty('--columns', columnsInput.value);
 }
 
+function toImageId(date, name, key) {
+  return name !== '' ? `${date}/${name}/${key}` : `${date}/${key}`;
+}
+
 async function fetchList() {
   try {
     const response = await fetch(`${workerUrl}list`);
@@ -47,9 +51,10 @@ async function fetchList() {
     const statsMap = {};
     data.dates.forEach((dateObj) => {
       dateObj.items.forEach((item) => {
-        // Item identifier: {date}/{itemName} where itemName is empty string for individual files
-        const itemId = item.name !== '' ? `${dateObj.date}/${item.name}` : `${dateObj.date}/`;
-        statsMap[itemId] = {favorite: item.fav_count || 0, bad: item.bad_count || 0};
+        item.images.forEach(data => {
+            const imageId = toImageId(dateObj.date, item.name, data.key);
+            statsMap[imageId] = {favorite: data.fav || 0, bad: data.bad || 0};
+        });
       });
     });
     
@@ -71,21 +76,21 @@ function buildGallery(dates) {
     // Add folder subsection
     if (dateObj.items.length > 0) {
       dateObj.items.forEach(item => {
-        const files = generateFileList(dateObj.date, item.name, item.count);
+        const images = item.images.map(data => toImageId(dateObj.date, item.name, data.key));
         
         const folderSubsection = document.createElement('div');
         folderSubsection.className = 'category-subsection';
         
         const folderHeader = document.createElement('h3');
         let folderTitle = item.name === '' ? 'Individual Images' : item.name
-        folderHeader.textContent = `${dateObj.date} - ${folderTitle} (${item.count} objects)`;
+        folderHeader.textContent = `${dateObj.date} - ${folderTitle} (${item.images.length} objects)`;
         folderSubsection.appendChild(folderHeader);
         
         const folderGrid = document.createElement('div');
         folderGrid.className = 'image-grid';
         
-        files.forEach(file => {
-          createImageElement(folderGrid, file, dateObj.date, item.name, item.count);
+        images.forEach(imageid => {
+          createImageElement(folderGrid, imageid, dateObj.date, item.name);
         });
         folderSubsection.appendChild(folderGrid);
         section.appendChild(folderSubsection);
@@ -97,28 +102,7 @@ function buildGallery(dates) {
   });
 }
 
-function generateFileList(date, name, count) {
-    if (name != '') {
-        // For folders: compilation, comic, and all frames
-        const basePath = `${date}/${name}`;
-        let files = [
-            `${basePath}/compilation.webp`,
-            `${basePath}/comic.webp`
-        ];
-        for (let i = 1; i <= count; i++) {
-            files.push(`${basePath}/frame${i}.webp`);
-        }
-        return files;
-    } else {
-        let files = [];
-        for (let i = 1; i <= count; i++) {
-            files.push(`${date}/${i}.webp`);
-        }
-        return files;
-    }
-}
-
-function createImageElement(container, imagePath, date, name, frameCount) {
+function createImageElement(container, imageId, date, name) {
   const imgDiv = document.createElement('div');
   imgDiv.className = 'image-item';
   imgDiv.style.position = 'relative';
@@ -126,7 +110,7 @@ function createImageElement(container, imagePath, date, name, frameCount) {
   imgDiv.style.cursor = 'pointer';
   
   const img = document.createElement('img');
-  img.src = `${bucketUrl}/${imagePath}`;
+  img.src = `${bucketUrl}/${imageId}.webp`;
   img.loading = 'lazy';
   img.style.display = 'block';
   img.style.height = '262px';
@@ -141,13 +125,10 @@ function createImageElement(container, imagePath, date, name, frameCount) {
   const badBtn = document.createElement('button');
   badBtn.className = 'icon-button';
   
-  // Calculate item identifier: {date}/{itemName} where itemName is empty string for individual files
-  const itemId = name !== '' ? `${date}/${name}` : `${date}/`;
-  
   // Update button display
   function updateButtonDisplay() {
-    const voteData = stats[itemId] || {favorite: 0, bad: 0};
-    const userVote = userVotes[itemId];
+    const voteData = stats[imageId] || {favorite: 0, bad: 0};
+    const userVote = userVotes[imageId];
     
     // Update favorite button
     favBtn.innerHTML = (userVote === 'favorite' ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
@@ -162,18 +143,18 @@ function createImageElement(container, imagePath, date, name, frameCount) {
   
   favBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(itemId, 'favorite', updateButtonDisplay);
+    markImage(imageId, 'favorite', updateButtonDisplay);
   };
   
   badBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(itemId, 'bad', updateButtonDisplay);
+    markImage(imageId, 'bad', updateButtonDisplay);
   };
   
   buttons.appendChild(favBtn);
   buttons.appendChild(badBtn);
   
-  img.onclick = () => showModal(img.src, date, name);
+  img.onclick = () => showModal(img.src, date, imageId);
   
   imgDiv.appendChild(img);
   imgDiv.appendChild(buttons);
@@ -240,7 +221,7 @@ async function markImage(path, action, callback) {
   }
 }
 
-function showModal(src, date, name) {
+function showModal(src, date, imageId) {
   const modal = document.createElement('div');
   modal.className = 'fullscreen-modal';
   modal.style.position = 'fixed';
@@ -278,13 +259,10 @@ function showModal(src, date, name) {
   const badBtn = document.createElement('button');
   badBtn.className = 'icon-button';
   
-  // Calculate item identifier using date and name
-  const itemId = name !== '' ? `${date}/${name}` : `${date}/`;
-  
   // Update button display
   function updateModalButtons() {
-    const voteData = stats[itemId] || {favorite: 0, bad: 0};
-    const userVote = userVotes[itemId];
+    const voteData = stats[imageId] || {favorite: 0, bad: 0};
+    const userVote = userVotes[imageId];
     
     favBtn.innerHTML = (userVote === 'favorite' ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
     favBtn.classList.toggle('active', userVote === 'favorite');
@@ -297,11 +275,11 @@ function showModal(src, date, name) {
   
   favBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(itemId, 'favorite', updateModalButtons);
+    markImage(imageId, 'favorite', updateModalButtons);
   };
   badBtn.onclick = (e) => {
     e.stopPropagation();
-    markImage(itemId, 'bad', updateModalButtons);
+    markImage(imageId, 'bad', updateModalButtons);
   };
   
   buttons.appendChild(favBtn);
