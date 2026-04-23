@@ -36,58 +36,28 @@ function buildGallery(dates, stats) {
     section.className = 'date-section';
     section.innerHTML = `<h2>${dateObj.date}</h2>`;
     
-    // Separate folders and files
-    const folders = dateObj.items.filter(item => item.is_folder);
-    const files = dateObj.items.filter(item => !item.is_folder);
-    
     // Add folder subsection
-    if (folders.length > 0) {
-      const folderSubsection = document.createElement('div');
-      folderSubsection.className = 'category-subsection';
-      
-      const folderHeader = document.createElement('h3');
-      folderHeader.textContent = 'GIF Collections';
-      folderSubsection.appendChild(folderHeader);
-      
-      const folderGrid = document.createElement('div');
-      folderGrid.className = 'image-grid';
-      
-      folders.forEach(item => {
+    if (dateObj.items.length > 0) {
+      dateObj.items.forEach(item => {
         const files = generateFileList(dateObj.date, item.name, item.count);
+        
+        const folderSubsection = document.createElement('div');
+        folderSubsection.className = 'category-subsection';
+        
+        const folderHeader = document.createElement('h3');
+        folderHeader.textContent = item.name === '' ? 'Individual Images' : item.name;
+        folderSubsection.appendChild(folderHeader);
+        
+        const folderGrid = document.createElement('div');
+        folderGrid.className = 'image-grid';
+        
         files.forEach(file => {
           createImageElement(folderGrid, file, dateObj.date, item.name, item.count);
         });
+        folderSubsection.appendChild(folderGrid);
+        section.appendChild(folderSubsection);
       });
       
-      folderSubsection.appendChild(folderGrid);
-      section.appendChild(folderSubsection);
-    }
-    
-    // Add files subsection
-    if (files.length > 0) {
-      const fileSubsection = document.createElement('div');
-      fileSubsection.className = 'category-subsection';
-      
-      const fileHeader = document.createElement('h3');
-      fileHeader.textContent = 'Individual Images';
-      fileSubsection.appendChild(fileHeader);
-      
-      const fileGrid = document.createElement('div');
-      fileGrid.className = 'image-grid';
-      
-      files.forEach(item => {
-        // For individual files: generate list of all numbered images
-        const imageFiles = [];
-        for (let i = 1; i <= item.count; i++) {
-          imageFiles.push(`${dateObj.date}/${i}.webp`);
-        }
-        imageFiles.forEach(file => {
-          createImageElement(fileGrid, file, dateObj.date, '', item.count);
-        });
-      });
-      
-      fileSubsection.appendChild(fileGrid);
-      section.appendChild(fileSubsection);
     }
     
     gallery.appendChild(section);
@@ -95,7 +65,6 @@ function buildGallery(dates, stats) {
 }
 
 function generateFileList(date, name, count) {
-    console.log(`Generating file list for date: ${date}, name: ${name}, count: ${count}`);
     if (name != '') {
         // For folders: compilation, comic, and all frames
         const basePath = `${date}/${name}`;
@@ -124,7 +93,7 @@ function createImageElement(container, imagePath, date, name, frameCount) {
   imgDiv.style.cursor = 'pointer';
   
   const img = document.createElement('img');
-  img.src = `${bucketUrl}/images/${imagePath}`;
+  img.src = `${bucketUrl}/${imagePath}`;
   img.loading = 'lazy';
   img.style.display = 'block';
   img.style.height = '262px';
