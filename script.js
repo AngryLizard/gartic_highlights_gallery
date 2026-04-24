@@ -119,6 +119,8 @@ function createImageElement(container, imageId, date, name) {
   img.style.height = '262px';
   img.style.width = 'auto';
   img.style.margin = 'auto';
+    
+  // Fade out image if marked as bad
   img.dataset.src = `${bucketUrl}/${imageId}.webp`;
 
     let loadTimeout;
@@ -154,6 +156,7 @@ function createImageElement(container, imageId, date, name) {
   function updateButtonDisplay() {
     const voteData = stats[imageId] || {favorite: 0, bad: 0};
     const userVote = userVotes[imageId] || {favorite: false, bad: false};
+    img.style.opacity = voteData.bad > voteData.favorite ? '0.2' : '1';
     
     // Update favorite button
     favBtn.innerHTML = (userVote.favorite ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
