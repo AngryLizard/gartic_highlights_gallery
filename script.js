@@ -1,5 +1,6 @@
 const workerUrl = 'https://gartic-highlights-gallery.angrylizard.workers.dev/';
 const bucketUrl = 'https://pub-d4b8e6479ecd4cfd8ca22220375fc499.r2.dev';
+const imageLoadTimeout = 500; // Time in ms to wait before loading an image when it enters the viewport
 
 let stats = {};
 let userVotes = {}; // Track user's personal votes: {imagePath: 'favorite' | 'bad' | null}
@@ -117,6 +118,7 @@ function createImageElement(container, imageId, date, name) {
   img.style.display = 'block';
   img.style.height = '262px';
   img.style.width = 'auto';
+  img.style.margin = 'auto';
   img.dataset.src = `${bucketUrl}/${imageId}.webp`;
 
     let loadTimeout;
@@ -127,7 +129,7 @@ function createImageElement(container, imageId, date, name) {
         // start 1s timer when image enters viewport
         loadTimeout = setTimeout(() => {
             img.src = img.dataset.src;
-        }, 1000);
+        }, imageLoadTimeout);
         } else {
         // if user scrolls away quickly, cancel loading
         clearTimeout(loadTimeout);
@@ -151,15 +153,15 @@ function createImageElement(container, imageId, date, name) {
   // Update button display
   function updateButtonDisplay() {
     const voteData = stats[imageId] || {favorite: 0, bad: 0};
-    const userVote = userVotes[imageId];
+    const userVote = userVotes[imageId] || {favorite: false, bad: false};
     
     // Update favorite button
-    favBtn.innerHTML = (userVote === 'favorite' ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
-    favBtn.classList.toggle('active', userVote === 'favorite');
+    favBtn.innerHTML = (userVote.favorite ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
+    favBtn.classList.toggle('active', userVote.favorite);
     
     // Update bad button
-    badBtn.innerHTML = (userVote === 'bad' ? blockFilledSVG : blockEmptySVG) + `<span>${voteData.bad}</span>`;
-    badBtn.classList.toggle('active', userVote === 'bad');
+    badBtn.innerHTML = (userVote.bad ? blockFilledSVG : blockEmptySVG) + `<span>${voteData.bad}</span>`;
+    badBtn.classList.toggle('active', userVote.bad);
   }
   
   updateButtonDisplay();
@@ -185,22 +187,16 @@ function createImageElement(container, imageId, date, name) {
 }
 
 async function markImage(path, action, callback) {
-  const currentVote = userVotes[path];
+  const currentVote = userVotes[path] || {favorite: false, bad: false};
   let isAdding = false;
   
-  // Check if this is a new vote or toggling an existing one
-  if (currentVote === action) {
-    // User is toggling off their vote
-    userVotes[path] = null;
-    isAdding = false;
-  } else if (currentVote === null || currentVote === undefined) {
-    // User is adding a new vote
-    userVotes[path] = action;
-    isAdding = true;
-  } else {
-    // User is changing their vote (e.g., from favorite to bad)
-    userVotes[path] = action;
-    isAdding = true;
+  // Check if this is a new vote or toggling an existing one, then toggle the vote state
+  if (action === 'favorite') {
+    isAdding = !currentVote.favorite;
+    currentVote.favorite = isAdding;
+  } else if (action === 'bad') {
+    isAdding = !currentVote.bad;
+    currentVote.bad = isAdding;
   }
   
   // Save to localStorage
@@ -285,13 +281,13 @@ function showModal(src, date, imageId) {
   // Update button display
   function updateModalButtons() {
     const voteData = stats[imageId] || {favorite: 0, bad: 0};
-    const userVote = userVotes[imageId];
+    const userVote = userVotes[imageId] || {favorite: false, bad: false};
     
-    favBtn.innerHTML = (userVote === 'favorite' ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
-    favBtn.classList.toggle('active', userVote === 'favorite');
+    favBtn.innerHTML = (userVote.favorite ? starFilledSVG : starEmptySVG) + `<span>${voteData.favorite}</span>`;
+    favBtn.classList.toggle('active', userVote.favorite);
     
-    badBtn.innerHTML = (userVote === 'bad' ? blockFilledSVG : blockEmptySVG) + `<span>${voteData.bad}</span>`;
-    badBtn.classList.toggle('active', userVote === 'bad');
+    badBtn.innerHTML = (userVote.bad ? blockFilledSVG : blockEmptySVG) + `<span>${voteData.bad}</span>`;
+    badBtn.classList.toggle('active', userVote.bad);
   }
   
   updateModalButtons();
