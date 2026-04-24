@@ -194,9 +194,11 @@ async function markImage(path, action, callback) {
   if (action === 'favorite') {
     isAdding = !currentVote.favorite;
     currentVote.favorite = isAdding;
+    userVotes[path] = currentVote;
   } else if (action === 'bad') {
     isAdding = !currentVote.bad;
     currentVote.bad = isAdding;
+    userVotes[path] = currentVote;
   }
   
   // Save to localStorage
