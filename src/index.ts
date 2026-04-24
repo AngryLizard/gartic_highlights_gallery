@@ -82,9 +82,9 @@ export default {
             };
             })
         }));
-      
+      const sortedDatesWithStats = datesWithStats.sort((a, b) => b.date.localeCompare(a.date));
       return new Response(JSON.stringify({
-        dates: datesWithStats
+        dates: sortedDatesWithStats
       }), {
         headers: {
           'Content-Type': 'application/json',
