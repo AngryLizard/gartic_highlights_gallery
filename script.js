@@ -110,11 +110,34 @@ function createImageElement(container, imageId, date, name) {
   imgDiv.style.cursor = 'pointer';
   
   const img = document.createElement('img');
-  img.src = `${bucketUrl}/${imageId}.webp`;
+  // This would display all images ast once, however when user
+  // scrolls very fast we don't want to load everything, just what they are looking at for more than a second
+  //img.src = `${bucketUrl}/${imageId}.webp`;
   img.loading = 'lazy';
   img.style.display = 'block';
   img.style.height = '262px';
   img.style.width = 'auto';
+  img.dataset.src = `${bucketUrl}/${imageId}.webp`;
+
+    let loadTimeout;
+
+    const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+        // start 1s timer when image enters viewport
+        loadTimeout = setTimeout(() => {
+            img.src = img.dataset.src;
+        }, 1000);
+        } else {
+        // if user scrolls away quickly, cancel loading
+        clearTimeout(loadTimeout);
+        }
+    });
+    }, {
+    rootMargin: "150px"
+    });
+
+    observer.observe(img);
   
   const buttons = document.createElement('div');
   buttons.className = 'buttons';
